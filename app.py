@@ -5,7 +5,6 @@ from datetime import datetime
 from RecommenderModel import RecommenderNet
 import tensorflow as tf
 from tensorflow import keras
-import os
 
 PROVIDERS_CSV = 'datasets/providers.csv'
 MODEL_COLLABORATIVE_FILTERING = 'datasets/collaborativeFilteringModelVersion.csv'
@@ -16,6 +15,7 @@ PATH_MODELS = 'models/'
 app = Flask(__name__)
 
 
+
 @app.route('/')
 def hello_world():
     return 'Service up'
@@ -23,28 +23,18 @@ def hello_world():
 
 @app.route('/collaborativeFiltering/getRecommendationsForUserId/<id>', methods=['GET'])
 def collaborativeFiltering_getRecommendationsForUSerId(id):
-    new_rating_file_pd = pd.read_csv(RATINGS_CSV)
-    num_users = max(new_rating_file_pd["userId"])
-
-    new_movies_file_pd = pd.read_csv(DATASETS_NEW_MOVIES_CSV)
-    movie_ids = new_movies_file_pd["movieId"].unique().tolist()
-    movie2movie_encoded = {x: i for i, x in enumerate(movie_ids)}
-    movie_encoded2movie = {i: x for i, x in enumerate(movie_ids)}
-    num_movies = len(movie_encoded2movie)
 
     version_model_collaborative_filtering_pd = pd.read_csv(MODEL_COLLABORATIVE_FILTERING)
-    last_version_name = version_model_collaborative_filtering_pd['file_name'][
-        version_model_collaborative_filtering_pd.index[-1]]
+    last_version_name = version_model_collaborative_filtering_pd['file_name'][version_model_collaborative_filtering_pd.index[-1]]
+    num_users = version_model_collaborative_filtering_pd['num_users'][version_model_collaborative_filtering_pd.index[-1]]
+    num_movies = version_model_collaborative_filtering_pd['num_movies'][version_model_collaborative_filtering_pd.index[-1]]
 
     model = RecommenderNet(num_users, num_movies, 50)
-    model.compile(
-        loss=tf.keras.losses.BinaryCrossentropy(), optimizer=keras.optimizers.Adam(learning_rate=0.00005)
-    )
-    model.build((62423, 1))
+    model.compile(loss=tf.keras.losses.BinaryCrossentropy(), optimizer=keras.optimizers.Adam(learning_rate=0.00005))
+    model.build((17500067, 2))
+    model.load_weights(PATH_MODELS+last_version_name, by_name=False, skip_mismatch=False, options=None)
 
-    model.load_weights(PATH_MODELS + last_version_name, by_name=False, skip_mismatch=False, options=None)
-
-    return model.summary()
+    return str(model.summary())
 
 
 @app.route('/addRaiting', methods=['POST'])
