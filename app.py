@@ -114,9 +114,28 @@ def collaborativeFiltering_trainModel():
         loss=tf.keras.losses.BinaryCrossentropy(), optimizer=keras.optimizers.Adam(learning_rate=0.00005)
     )
     model.build(x_train.shape)
-    history = model.fit(x=x_train, y=y_train, batch_size=1024, epochs=10, verbose=2, validation_data=(x_val, y_val))
+    history = model.fit(x=x_train, y=y_train, batch_size=1024, epochs=1, verbose=2, validation_data=(x_val, y_val))
 
-    return history
+    version_model_collaborative_filtering_pd = pd.read_csv(MODEL_COLLABORATIVE_FILTERING)
+    maxVersion = max(version_model_collaborative_filtering_pd["version"])
+
+    new_model_name =  "modeloFiltadroColaborativo" + maxVersion
+
+    model_dict = {"version": (maxVersion + 1), "file_name": new_model_name,
+                  "num_users": num_users, "num_movies": num_movies}
+    version_model_collaborative_filtering_pd = version_model_collaborative_filtering_pd.append(model_dict,
+                                                                                               ignore_index=True)
+    version_model_collaborative_filtering_pd = version_model_collaborative_filtering_pd.astype({"version": int},
+                                                                                               errors='raise')
+    version_model_collaborative_filtering_pd = version_model_collaborative_filtering_pd.astype({"num_users": int},
+                                                                                               errors='raise')
+    version_model_collaborative_filtering_pd = version_model_collaborative_filtering_pd.astype({"num_movies": int},
+                                                                                               errors='raise')
+    version_model_collaborative_filtering_pd.to_csv(MODEL_COLLABORATIVE_FILTERING, index=False)
+
+    model.save_weights(PATH_MODELS + new_model_name, overwrite=True, save_format=None, options=None)
+
+    return "Finish Train moldel: "+new_model_name
 
 
 @app.route('/addRaiting', methods=['POST'])
@@ -179,4 +198,4 @@ def add_watch_provider_for_movie():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0' , debug=True)
+    app.run(host='0.0.0.0', debug=True)
