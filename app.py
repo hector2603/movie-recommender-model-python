@@ -5,6 +5,8 @@ from datetime import datetime
 from RecommenderModel import RecommenderNet
 import tensorflow as tf
 from tensorflow import keras
+import numpy as np
+
 
 PROVIDERS_CSV = 'datasets/providers.csv'
 MODEL_COLLABORATIVE_FILTERING = 'datasets/collaborativeFilteringModelVersion.csv'
@@ -24,6 +26,16 @@ def hello_world():
 @app.route('/collaborativeFiltering/getRecommendationsForUserId/<id>', methods=['GET'])
 def collaborativeFiltering_getRecommendationsForUSerId(id):
 
+    new_rating_file_pd = pd.read_csv(RATINGS_CSV)
+    new_rating_file_pd = new_rating_file_pd.astype({"userId": int}, errors='raise')
+    new_rating_file_pd = new_rating_file_pd.astype({"movieId": int}, errors='raise')
+    new_rating_file_pd = new_rating_file_pd.astype({"timestamp": int}, errors='raise')
+
+    new_movies_file_pd = pd.read_csv(DATASETS_NEW_MOVIES_CSV)
+    movie_ids = new_movies_file_pd["movieId"].unique().tolist()
+    movie2movie_encoded = {x: i for i, x in enumerate(movie_ids)}
+    movie_encoded2movie = {i: x for i, x in enumerate(movie_ids)}
+
     version_model_collaborative_filtering_pd = pd.read_csv(MODEL_COLLABORATIVE_FILTERING)
     last_version_name = version_model_collaborative_filtering_pd['file_name'][version_model_collaborative_filtering_pd.index[-1]]
     num_users = version_model_collaborative_filtering_pd['num_users'][version_model_collaborative_filtering_pd.index[-1]]
@@ -34,7 +46,15 @@ def collaborativeFiltering_getRecommendationsForUSerId(id):
     model.build((17500067, 2))
     model.load_weights(PATH_MODELS+last_version_name, by_name=False, skip_mismatch=False, options=None)
 
-    return str(model.summary())
+    movies_watched_by_user = new_rating_file_pd[new_rating_file_pd.userId == int(id)]
+    movies_not_watched = new_movies_file_pd[~new_movies_file_pd["movieId"].isin(movies_watched_by_user.movieId.values)]["movieId"]
+    movies_not_watched = list(set(movies_not_watched).intersection(set(movie2movie_encoded.keys())))
+    movies_not_watched = [[movie2movie_encoded.get(x)] for x in movies_not_watched]
+    user_movie_array = np.hstack(([[int(id)-1]] * len(movies_not_watched), movies_not_watched))
+
+    ratings = model.predict(user_movie_array).flatten()
+
+    return str(ratings)
 
 
 @app.route('/addRaiting', methods=['POST'])
