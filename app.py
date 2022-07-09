@@ -6,13 +6,13 @@ from RecommenderModel import RecommenderNet
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
+import joblib
 
 PROVIDERS_CSV = 'datasets/providers.csv'
 MODEL_COLLABORATIVE_FILTERING = 'datasets/collaborativeFilteringModelVersion.csv'
 DATASETS_NEW_MOVIES_CSV = 'datasets/newMovies.csv'
 RATINGS_CSV = 'datasets/newRatings.csv'
 FULL_RATINGS_CSV = 'datasets/ratings.csv'
-MOVIES_IDS_CSV = 'datasets/movieIds.csv'
 PATH_MODELS = 'models/'
 
 app = Flask(__name__)
@@ -23,6 +23,12 @@ def hello_world():
     return 'Service up'
 
 
+@app.route('/contentBased/getRecommendationsForUserId/<id>', methods=['GET'])
+def contentBased_getRecommendationsForUSerId(id):
+    modelo_cargado = joblib.load('modelo_SVM_movies.pkl')  # Carga del modelo.
+    y_pred_svm_lineal = modelo_cargado.predict(X_test)
+
+
 @app.route('/collaborativeFiltering/getRecommendationsForUserId/<id>', methods=['GET'])
 def collaborativeFiltering_getRecommendationsForUSerId(id):
     new_rating_file_pd = pd.read_csv(RATINGS_CSV)
@@ -30,7 +36,7 @@ def collaborativeFiltering_getRecommendationsForUSerId(id):
     new_rating_file_pd = new_rating_file_pd.astype({"movieId": int}, errors='raise')
     new_rating_file_pd = new_rating_file_pd.astype({"timestamp": int}, errors='raise')
 
-    new_movies_file_pd = pd.read_csv(MOVIES_IDS_CSV)
+    new_movies_file_pd = pd.read_csv(DATASETS_NEW_MOVIES_CSV)
     movie_ids = new_movies_file_pd["movieId"].unique().tolist()
     movie2movie_encoded = {x: i for i, x in enumerate(movie_ids)}
     movie_encoded2movie = {i: x for i, x in enumerate(movie_ids)}
@@ -81,7 +87,6 @@ def collaborativeFiltering_trainModel():
 
     user_ids = full_rating_file_pd["userId"].unique().tolist()
     user2user_encoded = {x: i for i, x in enumerate(user_ids)}
-    userencoded2user = {i: x for i, x in enumerate(user_ids)}
 
     new_movies_file_pd = pd.read_csv(DATASETS_NEW_MOVIES_CSV)
     movie_ids = new_movies_file_pd["movieId"].unique().tolist()
@@ -119,7 +124,7 @@ def collaborativeFiltering_trainModel():
     version_model_collaborative_filtering_pd = pd.read_csv(MODEL_COLLABORATIVE_FILTERING)
     maxVersion = max(version_model_collaborative_filtering_pd["version"])
 
-    new_model_name =  "modeloFiltadroColaborativo" + maxVersion
+    new_model_name =  "modeloFiltadroColaborativo_{}".format(maxVersion)
 
     model_dict = {"version": (maxVersion + 1), "file_name": new_model_name,
                   "num_users": num_users, "num_movies": num_movies}
