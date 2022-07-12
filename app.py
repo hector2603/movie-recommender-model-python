@@ -25,8 +25,40 @@ def hello_world():
 
 @app.route('/contentBased/getRecommendationsForUserId/<id>', methods=['GET'])
 def contentBased_getRecommendationsForUSerId(id):
-    modelo_cargado = joblib.load('modelo_SVM_movies.pkl')  # Carga del modelo.
-    y_pred_svm_lineal = modelo_cargado.predict(X_test)
+
+    df_newMovies = pd.read_csv(DATASETS_NEW_MOVIES_CSV, index_col="movieId")
+    df_providers = pd.read_csv(PROVIDERS_CSV)
+    df_providers.provider_id = df_providers.provider_id.apply(str)
+    df_model_movies = df_newMovies["year"].copy()
+    df_genres = df_newMovies['genres'].str.get_dummies(sep='|')
+    df_genres = df_genres[
+        ['Acción', 'Animación', 'Aventura', 'Bélica', 'Ciencia ficción', 'Comedia', 'Crimen', 'Documental', 'Drama',
+         'Familia', 'Fantasía', 'Historia', 'Misterio', 'Música', 'Película de TV', 'Romance', 'Suspense', 'Terror',
+         'Western']]
+    df_model_movies = pd.merge(how='left', left=df_model_movies, right=df_genres, left_on='movieId', right_on='movieId')
+    df_model_provider = df_providers.groupby(["movieId"]).agg({'provider_id': "|".join})
+    df_model_provider = df_model_provider['provider_id'].str.get_dummies(sep='|')
+    df_model_movies = pd.merge( how='left',left=df_model_movies, right=df_model_provider, left_on='movieId', right_on='movieId')
+
+    new_rating_file_pd = pd.read_csv(RATINGS_CSV)
+    new_rating_file_pd = new_rating_file_pd.astype({"userId": int}, errors='raise')
+    new_rating_file_pd = new_rating_file_pd.astype({"movieId": int}, errors='raise')
+    new_rating_file_pd = new_rating_file_pd.astype({"timestamp": int}, errors='raise')
+    movies_watched_by_user = new_rating_file_pd[new_rating_file_pd.userId == int(id)]
+    movies_not_watched = df_model_movies[~df_model_movies.index.isin(movies_watched_by_user.movieId.values)]
+    movies_not_watched = movies_not_watched.fillna(0)
+    X = movies_not_watched[['Acción', 'Animación', 'Aventura', 'Bélica', 'Ciencia ficción',
+                         'Comedia', 'Crimen', 'Documental', 'Drama', 'Familia', 'Fantasía',
+                         'Historia', 'Misterio', 'Música', 'Película de TV', 'Romance',
+                         'Suspense', 'Terror', 'Western', '11', '119', '167', '190', '2', '3',
+                         '31', '315', '337', '339', '350', '384', '444', '445', '467', '475',
+                         '521', '531', '534', '546', '551', '554', '567', '569', '575', '619',
+                         '67', '8']].values
+    modelo_cargado = joblib.load(PATH_MODELS+'modelo_SVM_movies.pkl')  # Carga del modelo.
+    y_pred_svm = modelo_cargado.predict(X)
+    movies_not_watched['rating'] = y_pred_svm
+    recommendation_dict = {"recommendedMovies": movies_not_watched.nlargest(10, 'rating').index.values.tolist()}
+    return recommendation_dict
 
 
 @app.route('/collaborativeFiltering/getRecommendationsForUserId/<id>', methods=['GET'])
