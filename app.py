@@ -25,7 +25,6 @@ def hello_world():
 
 @app.route('/contentBased/getRecommendationsForUserId/<id>', methods=['GET'])
 def contentBased_getRecommendationsForUSerId(id):
-
     df_newMovies = pd.read_csv(DATASETS_NEW_MOVIES_CSV, index_col="movieId")
     df_providers = pd.read_csv(PROVIDERS_CSV)
     df_providers.provider_id = df_providers.provider_id.apply(str)
@@ -38,7 +37,8 @@ def contentBased_getRecommendationsForUSerId(id):
     df_model_movies = pd.merge(how='left', left=df_model_movies, right=df_genres, left_on='movieId', right_on='movieId')
     df_model_provider = df_providers.groupby(["movieId"]).agg({'provider_id': "|".join})
     df_model_provider = df_model_provider['provider_id'].str.get_dummies(sep='|')
-    df_model_movies = pd.merge( how='left',left=df_model_movies, right=df_model_provider, left_on='movieId', right_on='movieId')
+    df_model_movies = pd.merge(how='left', left=df_model_movies, right=df_model_provider, left_on='movieId',
+                               right_on='movieId')
 
     new_rating_file_pd = pd.read_csv(RATINGS_CSV)
     new_rating_file_pd = new_rating_file_pd.astype({"userId": int}, errors='raise')
@@ -48,13 +48,13 @@ def contentBased_getRecommendationsForUSerId(id):
     movies_not_watched = df_model_movies[~df_model_movies.index.isin(movies_watched_by_user.movieId.values)]
     movies_not_watched = movies_not_watched.fillna(0)
     X = movies_not_watched[['Acción', 'Animación', 'Aventura', 'Bélica', 'Ciencia ficción',
-                         'Comedia', 'Crimen', 'Documental', 'Drama', 'Familia', 'Fantasía',
-                         'Historia', 'Misterio', 'Música', 'Película de TV', 'Romance',
-                         'Suspense', 'Terror', 'Western', '11', '119', '167', '190', '2', '3',
-                         '31', '315', '337', '339', '350', '384', '444', '445', '467', '475',
-                         '521', '531', '534', '546', '551', '554', '567', '569', '575', '619',
-                         '67', '8']].values
-    modelo_cargado = joblib.load(PATH_MODELS+'modelo_SVM_movies.pkl')  # Carga del modelo.
+                            'Comedia', 'Crimen', 'Documental', 'Drama', 'Familia', 'Fantasía',
+                            'Historia', 'Misterio', 'Música', 'Película de TV', 'Romance',
+                            'Suspense', 'Terror', 'Western', '11', '119', '167', '190', '2', '3',
+                            '31', '315', '337', '339', '350', '384', '444', '445', '467', '475',
+                            '521', '531', '534', '546', '551', '554', '567', '569', '575', '619',
+                            '67', '8']].values
+    modelo_cargado = joblib.load(PATH_MODELS + 'modelo_SVM_movies.pkl')  # Carga del modelo.
     y_pred_svm = modelo_cargado.predict(X)
     movies_not_watched['rating'] = y_pred_svm
     recommendation_dict = {"recommendedMovies": movies_not_watched.nlargest(10, 'rating').index.values.tolist()}
@@ -156,7 +156,7 @@ def collaborativeFiltering_trainModel():
     version_model_collaborative_filtering_pd = pd.read_csv(MODEL_COLLABORATIVE_FILTERING)
     maxVersion = max(version_model_collaborative_filtering_pd["version"])
 
-    new_model_name =  "modeloFiltadroColaborativo_{}".format(maxVersion)
+    new_model_name = "modeloFiltadroColaborativo_{}".format(maxVersion)
 
     model_dict = {"version": (maxVersion + 1), "file_name": new_model_name,
                   "num_users": num_users, "num_movies": num_movies}
@@ -172,7 +172,7 @@ def collaborativeFiltering_trainModel():
 
     model.save_weights(PATH_MODELS + new_model_name, overwrite=True, save_format=None, options=None)
 
-    return "Finish Train moldel: "+new_model_name
+    return "Finish Train moldel: " + new_model_name
 
 
 @app.route('/addRaiting', methods=['POST'])
@@ -184,7 +184,7 @@ def add_raiting():
 
     newRatingFile_pd = pd.read_csv(RATINGS_CSV)
 
-    if _userId is None or _userId == "":
+    if _userId is None or _userId == "" or _userId == "0" or _userId == 0:
         maxIdUser = max(newRatingFile_pd["userId"])
         _userId = maxIdUser + 1
 
@@ -235,4 +235,4 @@ def add_watch_provider_for_movie():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', port=8081, debug=True)
