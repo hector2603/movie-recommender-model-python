@@ -151,12 +151,12 @@ def collaborativeFiltering_trainModel():
         loss=tf.keras.losses.BinaryCrossentropy(), optimizer=keras.optimizers.Adam(learning_rate=0.00005)
     )
     model.build(x_train.shape)
-    history = model.fit(x=x_train, y=y_train, batch_size=1024, epochs=1, verbose=2, validation_data=(x_val, y_val))
+    history = model.fit(x=x_train, y=y_train, batch_size=1024, epochs=5, verbose=2, validation_data=(x_val, y_val))
 
     version_model_collaborative_filtering_pd = pd.read_csv(MODEL_COLLABORATIVE_FILTERING)
     maxVersion = max(version_model_collaborative_filtering_pd["version"])
 
-    new_model_name = "modeloFiltadroColaborativo_{}".format(maxVersion)
+    new_model_name = "modeloFiltadroColaborativo_{}".format(maxVersion+1)
 
     model_dict = {"version": (maxVersion + 1), "file_name": new_model_name,
                   "num_users": num_users, "num_movies": num_movies}
